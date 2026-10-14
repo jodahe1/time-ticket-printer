@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Parking Manager Setup</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="desktop.css" />
+  <script src="setup.js" type="module"></script>
+</head>
+<body>
+  <main class="app">
+    <header class="app-header">
+      <div class="logo">P</div>
+      <div>
+        <h1>Parking Manager</h1>
+        <p>First-time setup for this computer</p>
+      </div>
+    </header>
+
+    <section class="form-card">
+      <h2>Setup</h2>
+      <p class="subtitle">Choose the receipt printer and create the admin login. This is asked only once.</p>
+
+      <form id="setupForm">
+        <div class="field">
+          <label for="printerSelect">Receipt printer</label>
+          <div class="inline">
+            <select id="printerSelect" name="printer"></select>
+            <button type="button" class="btn btn-secondary" data-action="refresh">Refresh</button>
+          </div>
+        </div>
+        <p class="hint">Choose the one marked [USB CONNECTED] if your receipt printer is plugged in by USB.</p>
+
+        <div class="field">
+          <label for="paperWidth">Thermal paper width</label>
+          <select id="paperWidth" name="paperWidth">
+            <option value="58">58 mm</option>
+            <option value="80">80 mm</option>
+          </select>
+        </div>
+
+        <label class="check"><input type="checkbox" name="cut" checked /> Cut the paper after each receipt</label>
+
+        <button type="button" class="btn btn-secondary" data-action="test">Print a test receipt</button>
+
+        <div class="setup-section">
+          <h3>Admin login</h3>
+          <div class="field">
+            <label for="adminUsername">Admin username</label>
+            <input type="text" id="adminUsername" value="admin" autocomplete="username" required />
+          </div>
+          <div class="field">
+            <label for="adminPassword">Admin password (min 6 characters)</label>
+            <input type="password" id="adminPassword" autocomplete="new-password" minlength="6" required />
+          </div>
+          <div class="field">
+            <label for="adminPassword2">Repeat password</label>
+            <input type="password" id="adminPassword2" autocomplete="new-password" minlength="6" required />
+          </div>
+        </div>
+
+        <p class="message"></p>
+        <button type="submit" class="btn btn-primary">Save and start</button>
+      </form>
+    </section>
+
+    <footer class="app-footer">
+      Powered By NYT Software Solutions
+    </footer>
+  </main>
+</body>
+</html>

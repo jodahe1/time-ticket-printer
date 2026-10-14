@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Parking Admin</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="desktop.css" />
+  <style>
+    .app.admin { max-width: 1100px; }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr auto;
+      gap: 12px;
+      align-items: end;
+      margin-bottom: 18px;
+    }
+
+    .toolbar .field { margin-bottom: 0; }
+    .toolbar .btn { width: auto; white-space: nowrap; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .stat {
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #f8faf8;
+    }
+
+    .stat span { color: var(--muted); font-size: 13px; }
+    .stat strong { display: block; font-size: 22px; }
+
+    .table-wrap { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th, td {
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+    td.num, th.num { text-align: right; }
+    .empty { padding: 30px; text-align: center; color: var(--muted); }
+
+    .top-actions { display: flex; gap: 8px; margin-left: auto; }
+    .top-actions .btn { width: auto; min-height: 38px; padding: 8px 14px; display: inline-flex; align-items: center; text-decoration: none; font-size: 14px; }
+
+    .error { color: #b42318; font-size: 14px; min-height: 20px; margin: 0 0 12px; }
+    .login-card { max-width: 420px; margin: 0 auto; }
+
+    details.password { margin-top: 22px; }
+    details.password summary { cursor: pointer; color: var(--muted); font-size: 14px; }
+    details.password form { max-width: 420px; margin-top: 14px; }
+
+    @media (max-width: 720px) {
+      .toolbar { grid-template-columns: 1fr 1fr; }
+      .toolbar .search { grid-column: 1 / -1; }
+      .toolbar .btn { grid-column: 1 / -1; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app admin">
+    <header class="app-header">
+      <div class="logo">P</div>
+      <div>
+        <h1>Parking Admin</h1>
+        <p>Saved receipts on this computer</p>
+      </div>
+      <div class="top-actions hidden" id="topActions">
+        <a href="index.html" class="btn btn-secondary">New Receipt</a>
+        <button type="button" id="logoutButton" class="btn btn-secondary">Log out</button>
+      </div>
+    </header>
+
+    <section class="form-card login-card" id="loginSection">
+      <h2>Admin Login</h2>
+      <p class="subtitle">Sign in to view saved receipts.</p>
+      <form id="loginForm">
+        <div class="field">
+          <label for="username">Username</label>
+          <input type="text" id="username" autocomplete="username" required />
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input type="password" id="password" autocomplete="current-password" required />
+        </div>
+        <p class="error" id="loginError"></p>
+        <button type="submit" class="btn btn-primary">Log in</button>
+      </form>
+    </section>
+
+    <section class="form-card hidden" id="dataSection">
+      <div class="toolbar">
+        <div class="field search">
+          <label for="search">Search</label>
+          <input type="search" id="search" placeholder="Customer name or receipt no." />
+        </div>
+        <div class="field">
+          <label for="fromDate">From</label>
+          <input type="date" id="fromDate" />
+        </div>
+        <div class="field">
+          <label for="toDate">To</label>
+          <input type="date" id="toDate" />
+        </div>
+        <button type="button" id="exportButton" class="btn btn-primary">Export PDF</button>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><span>Receipts</span><strong id="statCount">0</strong></div>
+        <div class="stat"><span>Total fees</span><strong id="statTotal">0.00 ETB</strong></div>
+      </div>
+
+      <p class="error" id="dataError"></p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Receipt No.</th>
+              <th>Created</th>
+              <th>Customer</th>
+              <th>In-Time</th>
+              <th>Out-Time</th>
+              <th class="num">Fee</th>
+              <th class="num">Prints</th>
+            </tr>
+          </thead>
+          <tbody id="receiptRows"></tbody>
+        </table>
+        <div class="empty hidden" id="emptyState">No receipts match the filters.</div>
+      </div>
+
+      <details class="password">
+        <summary>Change admin password</summary>
+        <form id="passwordForm">
+          <div class="field">
+            <label for="currentPassword">Current password</label>
+            <input type="password" id="currentPassword" autocomplete="current-password" required />
+          </div>
+          <div class="field">
+            <label for="newPassword">New password</label>
+            <input type="password" id="newPassword" autocomplete="new-password" minlength="6" required />
+          </div>
+          <p class="error" id="passwordMessage"></p>
+          <button type="submit" class="btn btn-secondary">Update password</button>
+        </form>
+      </details>
+
+      <details class="password">
+        <summary>Printer settings</summary>
+        <form id="printerForm">
+          <div class="field">
+            <label for="printerSelect">Receipt printer</label>
+            <div class="inline">
+              <select id="printerSelect" name="printer"></select>
+              <button type="button" class="btn btn-secondary" data-action="refresh">Refresh</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="paperWidth">Thermal paper width</label>
+            <select id="paperWidth" name="paperWidth">
+              <option value="58">58 mm</option>
+              <option value="80">80 mm</option>
+            </select>
+          </div>
+          <label class="check"><input type="checkbox" name="cut" checked /> Cut the paper after each receipt</label>
+          <p class="error message"></p>
+          <div class="button-row">
+            <button type="button" class="btn btn-secondary" data-action="test">Test print</button>
+            <button type="submit" class="btn btn-primary">Save printer</button>
+          </div>
+        </form>
+      </details>
+    </section>
+
+    <footer class="app-footer">
+      Powered By NYT Software Solutions
+    </footer>
+  </main>
+
+  <script src="vendor/jspdf.umd.min.js"></script>
+  <script src="vendor/jspdf.plugin.autotable.min.js"></script>
+  <script type="module" src="admin.js"></script>
+</body>
+</html>

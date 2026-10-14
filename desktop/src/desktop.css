@@ -1,0 +1,29 @@
+/* Extra form styles for the desktop app's setup and printer settings */
+
+.field select {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  outline: none;
+}
+
+.field select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgb(22 101 52 / 10%);
+}
+
+.inline { display: flex; gap: 8px; }
+.inline select { flex: 1; min-width: 0; }
+.inline .btn, .button-row .btn { width: auto; }
+.button-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.check { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; cursor: pointer; }
+.check input { width: auto; min-height: 0; }
+.message { color: #b42318; font-size: 14px; min-height: 20px; margin: 0 0 12px; }
+.hint { color: var(--muted); font-size: 13px; margin: -8px 0 16px; }
+.setup-section { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border); }
+.setup-section h3 { margin: 0 0 12px; font-size: 16px; }

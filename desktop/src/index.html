@@ -1,0 +1,124 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Parking Manager</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="script.js" type="module"></script>
+</head>
+<body>
+  <main class="app">
+    <header class="app-header">
+      <div class="logo">P</div>
+      <div>
+        <h1>Parking Manager</h1>
+        <p>Parking receipt generator</p>
+      </div>
+    </header>
+
+    <section class="form-card" id="formSection">
+      <h2>Parking Details</h2>
+      <p class="subtitle">Enter the parking information below.</p>
+
+      <form id="parkingForm">
+        <div class="time-grid">
+          <div class="field">
+            <label for="inTime">In-Time</label>
+            <input type="time" id="inTime" required />
+          </div>
+
+          <div class="field">
+            <label for="outTime">Out-Time</label>
+            <input type="time" id="outTime" required />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="fee">Parking Fee (ETB)</label>
+          <input
+            type="text"
+            id="fee"
+            placeholder="0.00"
+            inputmode="decimal"
+            autocomplete="off"
+            pattern="^\d+(\.\d{1,2})?$"
+            required
+          />
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+          Generate Receipt
+        </button>
+      </form>
+    </section>
+
+    <section class="receipt-card hidden" id="receiptSection">
+      <div class="receipt" id="receipt">
+        <div class="receipt-header">
+          <div class="receipt-logo">W</div>
+          <h2>WASTINA COMMERCIAL CENTER</h2>
+          <p>Thank you for parking with us!</p>
+        </div>
+
+        <div class="receipt-divider"></div>
+
+        <div class="receipt-row">
+          <span>Receipt No.</span>
+          <strong id="receiptNumber"></strong>
+        </div>
+
+        <div class="receipt-row">
+          <span>Date</span>
+          <strong id="receiptDate"></strong>
+        </div>
+
+        <div class="receipt-divider"></div>
+
+        <div class="receipt-row">
+          <span>In-Time</span>
+          <strong id="receiptInTime"></strong>
+        </div>
+
+        <div class="receipt-row">
+          <span>Out-Time</span>
+          <strong id="receiptOutTime"></strong>
+        </div>
+
+        <div class="receipt-divider"></div>
+
+        <div class="total-row">
+          <span>TOTAL FEE</span>
+          <strong id="receiptFee"></strong>
+        </div>
+
+        <div class="receipt-footer">
+          <p>Please keep this receipt for your records.</p>
+          <p>Have a safe journey!</p>
+        </div>
+      </div>
+
+      <div class="receipt-actions no-print">
+        <button type="button" id="backButton" class="btn btn-secondary">
+          Back
+        </button>
+
+        <button type="button" id="printButton" class="btn btn-primary">
+          Print Receipt
+        </button>
+
+        <button type="button" id="newReceiptButton" class="btn btn-secondary">
+          New Receipt
+        </button>
+      </div>
+    </section>
+
+   
+<footer class="app-footer no-print">
+  Powered By NYT Software Solutions · <a href="admin.html" class="admin-link">Admin</a>
+</footer>
+
+  </main>
+</body>
+</html>
