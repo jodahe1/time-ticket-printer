@@ -98,7 +98,8 @@ input {
   font-weight: 700;
 }
 
-.field input {
+.field input,
+.field select {
   width: 100%;
   min-height: 48px;
   padding: 12px;
@@ -109,7 +110,8 @@ input {
   outline: none;
 }
 
-.field input:focus {
+.field input:focus,
+.field select:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgb(22 101 52 / 10%);
 }
@@ -118,6 +120,22 @@ input {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+}
+
+.time-picker {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 6px;
+}
+
+.time-picker input,
+.time-picker select {
+  min-width: 0;
+}
+
+.time-picker select {
+  padding: 12px 6px;
+  cursor: pointer;
 }
 
 .btn {

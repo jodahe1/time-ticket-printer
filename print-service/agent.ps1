@@ -87,7 +87,7 @@ function Save-Receipts($list) {
 
 function Get-IsoNow { (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ") }
 
-$ReceiptFields = @("receiptNo", "date", "inTime", "outTime", "fee", "feeText")
+$ReceiptFields = @("receiptNo", "date", "inTime", "outTime", "plateNumber", "tinNumber", "fee", "feeText")
 
 function Save-Receipt($data, [bool]$printed) {
   if (-not $data.receiptNo) { throw "receiptNo is required" }
@@ -347,6 +347,8 @@ function New-ReceiptBitmap($r, [int]$widthDots) {
   $y = & $row "Receipt No." $r.receiptNo $fontLabel $fontValue $rowGap
   $y = & $row "Date" $r.date $fontLabel $fontValue 0
   $y = & $divider
+  if ($r.plateNumber) { $y = & $row "Plate No." $r.plateNumber $fontLabel $fontValue $rowGap }
+  if ($r.tinNumber) { $y = & $row "TIN No." $r.tinNumber $fontLabel $fontValue $rowGap }
   $y = & $row "In-Time" $r.inTime $fontLabel $fontValue $rowGap
   $y = & $row "Out-Time" $r.outTime $fontLabel $fontValue 0
   $y = & $divider
@@ -489,6 +491,8 @@ function Invoke-WindowsPrint($receipt, [string]$printerName, $config) {
     $y = & $row "Receipt No." $r.receiptNo $fontLabel $fontValue
     $y = & $row "Date" $r.date $fontLabel $fontValue
     $y = & $divider
+    if ($r.plateNumber) { $y = & $row "Plate No." $r.plateNumber $fontLabel $fontValue }
+    if ($r.tinNumber) { $y = & $row "TIN No." $r.tinNumber $fontLabel $fontValue }
     $y = & $row "In-Time" $r.inTime $fontLabel $fontValue
     $y = & $row "Out-Time" $r.outTime $fontLabel $fontValue
     $y = & $divider

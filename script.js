@@ -3,6 +3,8 @@ const parkingForm = document.getElementById("parkingForm");
 const formSection = document.getElementById("formSection");
 const receiptSection = document.getElementById("receiptSection");
 const feeInput = document.getElementById("fee");
+const plateNumberInput = document.getElementById("plateNumber");
+const tinNumberInput = document.getElementById("tinNumber");
 
 const printButton = document.getElementById("printButton");
 const newReceiptButton = document.getElementById("newReceiptButton");
@@ -41,16 +43,42 @@ async function callPrintAgent(path, body, timeoutMs = 4000) {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function formatTime(timeValue) {
-  const [hours, minutes] = timeValue.split(":");
-  const date = new Date();
-  date.setHours(Number(hours), Number(minutes), 0, 0);
+// Typed 12-hour times: "8:30", "830" or "0830" plus the AM/PM dropdown.
+// 24-hour input like "14:30" is accepted and switches the dropdown to PM.
+function parseClock(value) {
+  const match = value.trim().match(/^(\d{1,2}):?(\d{2})?$/);
+  if (!match) return null;
 
-  return date.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
+  const hour = Number(match[1]);
+  const minute = Number(match[2] ?? 0);
+  if (hour > 23 || minute > 59) return null;
+
+  return { hour, minute };
+}
+
+// Returns e.g. "08:30 AM", "" if the box is empty, or null if it is invalid
+function readTime(prefix) {
+  const clockInput = document.getElementById(`${prefix}Clock`);
+  const periodSelect = document.getElementById(`${prefix}Period`);
+
+  if (!clockInput.value.trim()) return "";
+
+  const parsed = parseClock(clockInput.value);
+  if (!parsed) return null;
+
+  let { hour } = parsed;
+  if (hour === 0) {
+    hour = 12;
+    periodSelect.value = "AM";
+  } else if (hour > 12) {
+    hour -= 12;
+    periodSelect.value = "PM";
+  }
+
+  const clock = `${String(hour).padStart(2, "0")}:${String(parsed.minute).padStart(2, "0")}`;
+  clockInput.value = clock;
+
+  return `${clock} ${periodSelect.value}`;
 }
 
 function formatFee(amount) {
@@ -93,6 +121,39 @@ function generateReceiptNumber() {
 
 // ─── Input sanitisation ───────────────────────────────────────────────────────
 
+// Times: typed as "hh:mm" — the colon is added after two hour digits
+// (or typed by hand, e.g. "8:30"); tidied to "hh:mm" when the box loses focus
+for (const prefix of ["inTime", "outTime"]) {
+  const clockInput = document.getElementById(`${prefix}Clock`);
+  clockInput.addEventListener("input", function (event) {
+    const deleting = (event.inputType || "").startsWith("delete");
+    let [hourPart, ...rest] = this.value.replace(/[^0-9:]/g, "").split(":");
+
+    // "8" → "08", "25" → "02" + "5": no hour starts with 3–9 or 24–29
+    if (/^([3-9]|2[4-9])/.test(hourPart)) hourPart = "0" + hourPart;
+    if (!rest.length && hourPart.length > 2) rest = [hourPart.slice(2)];
+    hourPart = hourPart.slice(0, 2);
+    // Minutes can't start with 6–9
+    const minutes = rest.join("").replace(/^[6-9]+/, "").slice(0, 2);
+
+    if (rest.length) {
+      this.value = `${hourPart}:${minutes}`;
+    } else if (hourPart.length === 2 && !deleting) {
+      this.value = `${hourPart}:`;
+    } else {
+      this.value = hourPart;
+    }
+  });
+  clockInput.addEventListener("blur", () => readTime(prefix));
+}
+
+// Plate and TIN numbers: letters, digits, spaces and hyphens, upper-cased
+for (const input of [plateNumberInput, tinNumberInput]) {
+  input.addEventListener("input", function () {
+    this.value = this.value.toUpperCase().replace(/[^A-Z0-9\s-]/g, "");
+  });
+}
+
 feeInput.addEventListener("input", function () {
   const rawValue = this.value.replace(/[^0-9.]/g, "");
   const parts = rawValue.split(".");
@@ -115,13 +176,20 @@ feeInput.addEventListener("input", function () {
 parkingForm.addEventListener("submit", function (event) {
   event.preventDefault();
 
-  const inTime = document.getElementById("inTime").value;
-  const outTime = document.getElementById("outTime").value;
+  const inTime = readTime("inTime");
+  const outTime = readTime("outTime");
   const feeRaw = document.getElementById("fee").value;
   const fee = parseFeeInput(feeRaw);
+  const plateNumber = plateNumberInput.value.trim().replace(/\s+/g, " ");
+  const tinNumber = tinNumberInput.value.trim().replace(/\s+/g, " ");
 
-  if (!inTime || !outTime || feeRaw === "") {
+  if (inTime === "" || outTime === "" || feeRaw === "") {
     alert("Please fill in all the required fields.");
+    return;
+  }
+
+  if (inTime === null || outTime === null) {
+    alert("Please enter a valid time, like 8:30 or 08:30.");
     return;
   }
 
@@ -139,14 +207,20 @@ parkingForm.addEventListener("submit", function (event) {
       month: "short",
       year: "numeric",
     }),
-    inTime: formatTime(inTime),
-    outTime: formatTime(outTime),
+    inTime,
+    outTime,
+    plateNumber,
+    tinNumber,
     fee,
     feeText: formatFee(fee),
   };
 
   document.getElementById("receiptNumber").textContent = currentReceipt.receiptNo;
   document.getElementById("receiptDate").textContent = currentReceipt.date;
+  document.getElementById("receiptPlate").textContent = currentReceipt.plateNumber;
+  document.getElementById("receiptPlateRow").classList.toggle("hidden", !currentReceipt.plateNumber);
+  document.getElementById("receiptTin").textContent = currentReceipt.tinNumber;
+  document.getElementById("receiptTinRow").classList.toggle("hidden", !currentReceipt.tinNumber);
   document.getElementById("receiptInTime").textContent = currentReceipt.inTime;
   document.getElementById("receiptOutTime").textContent = currentReceipt.outTime;
   document.getElementById("receiptFee").textContent = currentReceipt.feeText;
@@ -200,6 +274,8 @@ async function printWithTauriPlugin() {
     // 2. Read values already rendered on screen
     const receiptNo   = document.getElementById("receiptNumber").textContent;
     const receiptDate = document.getElementById("receiptDate").textContent;
+    const plateVal    = document.getElementById("receiptPlate").textContent;
+    const tinVal      = document.getElementById("receiptTin").textContent;
     const inTimeVal   = document.getElementById("receiptInTime").textContent;
     const outTimeVal  = document.getElementById("receiptOutTime").textContent;
     const feeVal      = document.getElementById("receiptFee").textContent;
@@ -216,6 +292,8 @@ async function printWithTauriPlugin() {
       text(`Date         ${receiptDate}`, { align: "left" }),
       line({ character: "-", length: 32 }),
 
+      ...(plateVal ? [text(`Plate No.    ${plateVal}`, { align: "left" })] : []),
+      ...(tinVal   ? [text(`TIN No.      ${tinVal}`,   { align: "left" })] : []),
       text(`In-Time      ${inTimeVal}`,  { align: "left" }),
       text(`Out-Time     ${outTimeVal}`, { align: "left" }),
       line({ character: "-", length: 32 }),
@@ -302,7 +380,7 @@ backButton.addEventListener("click", function () {
   receiptSection.classList.add("hidden");
   formSection.classList.remove("hidden");
 
-  document.getElementById("inTime").focus();
+  document.getElementById("inTimeClock").focus();
 
   window.scrollTo({
     top: 0,
@@ -316,7 +394,7 @@ newReceiptButton.addEventListener("click", function () {
   receiptSection.classList.add("hidden");
   formSection.classList.remove("hidden");
 
-  document.getElementById("inTime").focus();
+  document.getElementById("inTimeClock").focus();
 
   window.scrollTo({
     top: 0,

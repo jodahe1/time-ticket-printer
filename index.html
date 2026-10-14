@@ -25,13 +25,49 @@
       <form id="parkingForm">
         <div class="time-grid">
           <div class="field">
-            <label for="inTime">In-Time</label>
-            <input type="time" id="inTime" required />
+            <label for="inTimeClock">In-Time</label>
+            <div class="time-picker">
+              <input type="text" id="inTimeClock" placeholder="hh:mm" inputmode="numeric" autocomplete="off" maxlength="5" aria-label="In-Time" required />
+              <select id="inTimePeriod" aria-label="In-Time AM or PM">
+                <option>AM</option>
+                <option>PM</option>
+              </select>
+            </div>
           </div>
 
           <div class="field">
-            <label for="outTime">Out-Time</label>
-            <input type="time" id="outTime" required />
+            <label for="outTimeClock">Out-Time</label>
+            <div class="time-picker">
+              <input type="text" id="outTimeClock" placeholder="hh:mm" inputmode="numeric" autocomplete="off" maxlength="5" aria-label="Out-Time" required />
+              <select id="outTimePeriod" aria-label="Out-Time AM or PM">
+                <option>AM</option>
+                <option>PM</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="time-grid">
+          <div class="field">
+            <label for="plateNumber">Plate Number</label>
+            <input
+              type="text"
+              id="plateNumber"
+              placeholder="e.g. AA 3-B12345"
+              autocomplete="off"
+              maxlength="20"
+            />
+          </div>
+
+          <div class="field">
+            <label for="tinNumber">TIN Number</label>
+            <input
+              type="text"
+              id="tinNumber"
+              placeholder="e.g. TIN0012345678"
+              autocomplete="off"
+              maxlength="20"
+            />
           </div>
         </div>
 
@@ -75,6 +111,16 @@
         </div>
 
         <div class="receipt-divider"></div>
+
+        <div class="receipt-row" id="receiptPlateRow">
+          <span>Plate No.</span>
+          <strong id="receiptPlate"></strong>
+        </div>
+
+        <div class="receipt-row" id="receiptTinRow">
+          <span>TIN No.</span>
+          <strong id="receiptTin"></strong>
+        </div>
 
         <div class="receipt-row">
           <span>In-Time</span>
