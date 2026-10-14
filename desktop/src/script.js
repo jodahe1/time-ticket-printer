@@ -163,9 +163,7 @@ async function printWithApp() {
     printButton.textContent = "Print Receipt";
     alert(
       "Printing failed: " + (err?.message ?? String(err)) +
-      "
-
-Check that the printer is on and connected. " +
+      "\n\nCheck that the printer is on and connected. " +
       "The printer can be changed on the Admin page (Printer settings).",
     );
   } finally {

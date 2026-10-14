@@ -185,8 +185,7 @@ async function exportPdf() {
       fileName: `parking-receipts-${localDateKey(new Date().toISOString())}.pdf`,
       data: Array.from(new Uint8Array(doc.output("arraybuffer"))),
     });
-    alert("PDF saved to:
-" + path);
+    alert("PDF saved to:\n" + path);
   } catch (err) {
     errorEl.textContent = err.message;
   }
