@@ -81,14 +81,18 @@
         <h1>Parking Admin</h1>
         <p>Saved receipts on this computer</p>
       </div>
-      <div class="top-actions hidden" id="topActions">
+      <div class="top-actions" id="topActions">
         <a href="index.html" class="btn btn-secondary">New Receipt</a>
         <a href="zreport.html" class="btn btn-secondary">Z Report</a>
-        <button type="button" id="logoutButton" class="btn btn-secondary">Log out</button>
+        <button type="button" id="logoutButton" class="btn btn-secondary hidden">Log out</button>
       </div>
     </header>
 
     <section class="form-card login-card" id="loginSection">
+      <nav class="tabs" aria-label="Switch between user and admin">
+        <a href="index.html" class="tab">User</a>
+        <span class="tab active" aria-current="page">Admin</span>
+      </nav>
       <h2>Admin Login</h2>
       <p class="subtitle">Sign in to view saved receipts.</p>
       <form id="loginForm">

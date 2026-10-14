@@ -28,3 +28,27 @@
 .setup-section { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border); }
 .setup-section h3 { margin: 0 0 12px; font-size: 16px; }
 .field .optional { color: var(--muted); font-weight: 400; font-size: 13px; }
+
+/* User / Admin switch on the admin login card */
+.tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 22px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--background);
+}
+
+.tab {
+  padding: 9px 12px;
+  border-radius: 7px;
+  text-align: center;
+  font-weight: 700;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+a.tab:hover { color: var(--text); background: var(--white); }
+.tab.active { background: var(--primary); color: var(--white); }

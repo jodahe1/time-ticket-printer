@@ -5,7 +5,7 @@ const TOKEN_KEY = "parkingAdminToken";
 
 const loginSection = document.getElementById("loginSection");
 const dataSection = document.getElementById("dataSection");
-const topActions = document.getElementById("topActions");
+const logoutButton = document.getElementById("logoutButton");
 const searchInput = document.getElementById("search");
 const fromDateInput = document.getElementById("fromDate");
 const toDateInput = document.getElementById("toDate");
@@ -198,13 +198,13 @@ async function exportPdf() {
 function showLogin() {
   loginSection.classList.remove("hidden");
   dataSection.classList.add("hidden");
-  topActions.classList.add("hidden");
+  logoutButton.classList.add("hidden");
 }
 
 function showData() {
   loginSection.classList.add("hidden");
   dataSection.classList.remove("hidden");
-  topActions.classList.remove("hidden");
+  logoutButton.classList.remove("hidden");
   loadReceipts();
   printerSettings.load();
 }
