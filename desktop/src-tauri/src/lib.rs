@@ -191,6 +191,32 @@ async fn test_print(
   Ok(t.printer)
 }
 
+// --- Z report (open to every user) --------------------------------------------
+
+/// Receipts of one local day ("YYYY-MM-DD"), oldest first.
+#[tauri::command]
+fn z_report(state: State<AppState>, day: String) -> Vec<Map<String, Value>> {
+  state.store.lock().unwrap().receipts_for_day(&day)
+}
+
+#[tauri::command]
+async fn print_report(state: State<'_, AppState>, day: String, target: PrintTarget, raster: Raster) -> Result<String, String> {
+  let config = state.store.lock().unwrap().config();
+  let t = printer::Target { printer: target.printer, escpos: target.escpos, dots: target.dots };
+  let result = printer::print(&t, &format!("Parking Z Report {day}"), &raster, config.cut, config.receipt_width_mm);
+  let store = state.store.lock().unwrap();
+  match result {
+    Ok(()) => {
+      store.log(&format!("Printed Z report {day} on {}", t.printer));
+      Ok(t.printer)
+    }
+    Err(e) => {
+      store.log(&format!("Print of Z report {day} failed: {e}"));
+      Err(e)
+    }
+  }
+}
+
 // --- Admin ---------------------------------------------------------------------
 
 #[tauri::command]
@@ -240,10 +266,10 @@ fn change_password(
   store.save_config(&config)
 }
 
-/// Saves the exported PDF to the Downloads folder and shows it in Explorer.
+/// Saves an exported PDF (admin list or Z report) to the Downloads folder and
+/// shows it in Explorer.
 #[tauri::command]
-fn save_pdf(app: tauri::AppHandle, state: State<AppState>, token: String, file_name: String, data: Vec<u8>) -> Result<String, String> {
-  state.check_session(&token)?;
+fn save_pdf(app: tauri::AppHandle, file_name: String, data: Vec<u8>) -> Result<String, String> {
   let dir = app.path().download_dir().map_err(|e| e.to_string())?;
   let safe: String = file_name.chars().filter(|c| c.is_ascii_alphanumeric() || "-_.".contains(*c)).collect();
   let (stem, ext) = safe.rsplit_once('.').unwrap_or((&safe, "pdf"));
@@ -286,6 +312,8 @@ pub fn run() {
       save_receipt,
       print_receipt,
       test_print,
+      z_report,
+      print_report,
       login,
       list_receipts,
       change_password,

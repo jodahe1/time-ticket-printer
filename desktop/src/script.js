@@ -4,6 +4,8 @@ const parkingForm = document.getElementById("parkingForm");
 const formSection = document.getElementById("formSection");
 const receiptSection = document.getElementById("receiptSection");
 const feeInput = document.getElementById("fee");
+const plateNumberInput = document.getElementById("plateNumber");
+const tinNumberInput = document.getElementById("tinNumber");
 
 const printButton = document.getElementById("printButton");
 const newReceiptButton = document.getElementById("newReceiptButton");
@@ -73,6 +75,13 @@ function generateReceiptNumber() {
 
 // ─── Input sanitisation ───────────────────────────────────────────────────────
 
+// Plate and TIN numbers (optional): letters, digits, spaces and hyphens, upper-cased
+for (const input of [plateNumberInput, tinNumberInput]) {
+  input.addEventListener("input", function () {
+    this.value = this.value.toUpperCase().replace(/[^A-Z0-9\s-]/g, "");
+  });
+}
+
 feeInput.addEventListener("input", function () {
   const rawValue = this.value.replace(/[^0-9.]/g, "");
   const parts = rawValue.split(".");
@@ -99,6 +108,8 @@ parkingForm.addEventListener("submit", function (event) {
   const outTime = document.getElementById("outTime").value;
   const feeRaw = document.getElementById("fee").value;
   const fee = parseFeeInput(feeRaw);
+  const plateNumber = plateNumberInput.value.trim().replace(/\s+/g, " ");
+  const tinNumber = tinNumberInput.value.trim().replace(/\s+/g, " ");
 
   if (!inTime || !outTime || feeRaw === "") {
     alert("Please fill in all the required fields.");
@@ -121,12 +132,18 @@ parkingForm.addEventListener("submit", function (event) {
     }),
     inTime: formatTime(inTime),
     outTime: formatTime(outTime),
+    plateNumber,
+    tinNumber,
     fee,
     feeText: formatFee(fee),
   };
 
   document.getElementById("receiptNumber").textContent = currentReceipt.receiptNo;
   document.getElementById("receiptDate").textContent = currentReceipt.date;
+  document.getElementById("receiptPlate").textContent = currentReceipt.plateNumber;
+  document.getElementById("receiptPlateRow").classList.toggle("hidden", !currentReceipt.plateNumber);
+  document.getElementById("receiptTin").textContent = currentReceipt.tinNumber;
+  document.getElementById("receiptTinRow").classList.toggle("hidden", !currentReceipt.tinNumber);
   document.getElementById("receiptInTime").textContent = currentReceipt.inTime;
   document.getElementById("receiptOutTime").textContent = currentReceipt.outTime;
   document.getElementById("receiptFee").textContent = currentReceipt.feeText;

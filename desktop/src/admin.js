@@ -87,7 +87,7 @@ function getFiltered() {
 
   return allReceipts.filter((r) => {
     if (query) {
-      const haystack = `${r.customer} ${r.receiptNo}`.toLowerCase();
+      const haystack = `${r.receiptNo} ${r.plateNumber ?? ""} ${r.tinNumber ?? ""}`.toLowerCase();
       if (!haystack.includes(query)) return false;
     }
     const day = localDateKey(r.createdAt);
@@ -110,9 +110,10 @@ function render() {
       const cells = [
         [r.receiptNo],
         [formatCreated(r.createdAt)],
-        [r.customer],
         [r.inTime],
         [r.outTime],
+        [r.plateNumber || "—"],
+        [r.tinNumber || "—"],
         [formatMoney(r.fee), "num"],
         [String(r.printCount || 0), "num"],
       ];
@@ -161,20 +162,21 @@ async function exportPdf() {
 
   doc.autoTable({
     startY: 33,
-    head: [["Receipt No.", "Created", "Customer", "In-Time", "Out-Time", "Fee", "Prints"]],
+    head: [["Receipt No.", "Created", "In-Time", "Out-Time", "Plate No.", "TIN No.", "Fee", "Prints"]],
     body: receipts.map((r) => [
       r.receiptNo,
       formatCreated(r.createdAt),
-      r.customer,
       r.inTime,
       r.outTime,
+      r.plateNumber || "-",
+      r.tinNumber || "-",
       formatMoney(r.fee),
       String(r.printCount || 0),
     ]),
-    foot: [["", "", "", "", `${receipts.length} receipts`, formatMoney(total), ""]],
+    foot: [["", "", "", "", "", `${receipts.length} receipts`, formatMoney(total), ""]],
     headStyles: { fillColor: [22, 101, 52] },
     footStyles: { fillColor: [237, 241, 238], textColor: [23, 34, 27] },
-    columnStyles: { 5: { halign: "right" }, 6: { halign: "right" } },
+    columnStyles: { 6: { halign: "right" }, 7: { halign: "right" } },
     styles: { fontSize: 9 },
   });
 

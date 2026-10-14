@@ -27,3 +27,4 @@
 .hint { color: var(--muted); font-size: 13px; margin: -8px 0 16px; }
 .setup-section { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border); }
 .setup-section h3 { margin: 0 0 12px; font-size: 16px; }
+.field .optional { color: var(--muted); font-weight: 400; font-size: 13px; }

@@ -83,6 +83,7 @@
       </div>
       <div class="top-actions hidden" id="topActions">
         <a href="index.html" class="btn btn-secondary">New Receipt</a>
+        <a href="zreport.html" class="btn btn-secondary">Z Report</a>
         <button type="button" id="logoutButton" class="btn btn-secondary">Log out</button>
       </div>
     </header>
@@ -108,7 +109,7 @@
       <div class="toolbar">
         <div class="field search">
           <label for="search">Search</label>
-          <input type="search" id="search" placeholder="Customer name or receipt no." />
+          <input type="search" id="search" placeholder="Receipt, plate or TIN no." />
         </div>
         <div class="field">
           <label for="fromDate">From</label>
@@ -134,9 +135,10 @@
             <tr>
               <th>Receipt No.</th>
               <th>Created</th>
-              <th>Customer</th>
               <th>In-Time</th>
               <th>Out-Time</th>
+              <th>Plate No.</th>
+              <th>TIN No.</th>
               <th class="num">Fee</th>
               <th class="num">Prints</th>
             </tr>

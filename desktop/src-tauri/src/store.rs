@@ -46,7 +46,8 @@ pub struct Store {
   pub dir: PathBuf,
 }
 
-const RECEIPT_FIELDS: [&str; 6] = ["receiptNo", "date", "inTime", "outTime", "fee", "feeText"];
+const RECEIPT_FIELDS: [&str; 8] =
+  ["receiptNo", "date", "inTime", "outTime", "plateNumber", "tinNumber", "fee", "feeText"];
 
 impl Store {
   pub fn new(dir: PathBuf) -> Self {
@@ -89,6 +90,23 @@ impl Store {
       Some(Value::Object(m)) => vec![m],
       _ => Vec::new(),
     }
+  }
+
+  /// Receipts created on the given local day ("YYYY-MM-DD"), oldest first.
+  pub fn receipts_for_day(&self, day: &str) -> Vec<Map<String, Value>> {
+    let mut list: Vec<_> = self
+      .receipts()
+      .into_iter()
+      .filter(|r| {
+        r.get("createdAt")
+          .and_then(Value::as_str)
+          .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+          .map(|t| t.with_timezone(&chrono::Local).format("%Y-%m-%d").to_string() == day)
+          .unwrap_or(false)
+      })
+      .collect();
+    list.sort_by_key(|r| r.get("createdAt").and_then(Value::as_str).unwrap_or("").to_string());
+    list
   }
 
   /// Adds the receipt (or updates the one with the same number) and, when it
@@ -246,6 +264,19 @@ mod tests {
     assert_eq!(saved["printCount"], 2);
     assert_eq!(store.receipts().len(), 1);
     assert!(saved["createdAt"].as_str().unwrap().ends_with('Z'));
+
+    let with_plate: Map<String, Value> = serde_json::from_str(
+      r#"{"receiptNo":"PK-2","date":"14 Oct 2026","inTime":"10:00 AM","outTime":"11:00 AM","plateNumber":"AA 3-B12345","tinNumber":"","fee":50,"feeText":"50.00 ETB"}"#,
+    )
+    .unwrap();
+    let saved = store.save_receipt(&with_plate, false).unwrap();
+    assert_eq!(saved["plateNumber"], "AA 3-B12345");
+    assert_eq!(saved["tinNumber"], "");
+
+    let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+    let day = store.receipts_for_day(&today);
+    assert_eq!(day.iter().map(|r| r["receiptNo"].as_str().unwrap()).collect::<Vec<_>>(), ["PK-1", "PK-2"]);
+    assert!(store.receipts_for_day("2001-01-01").is_empty());
     let _ = fs::remove_dir_all(dir);
   }
 }

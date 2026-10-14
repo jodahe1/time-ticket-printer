@@ -6,7 +6,12 @@ The website in the repository root is separate and is not affected.
 
 ## What one installation sets up
 
-- **The app**: the same receipt form, receipt and Admin page as the website.
+- **The app**: the same receipt form, receipt and Admin page as the website,
+  plus optional **Plate Number** and **TIN Number** fields (shown on the
+  receipt and the paper only when filled in, and as columns on the Admin page).
+- **Z Report**: link at the bottom of the receipt page, open to every user
+  (no login). Shows the receipts, prints and total fees of a day, prints the
+  daily summary on the receipt printer and exports a PDF.
 - **Printing**: receipts print silently on the chosen printer, with no dialog.
   Thermal printers get the receipt exactly like the screen (ESC/POS) and the
   paper is cut after each receipt. Office printers use normal Windows

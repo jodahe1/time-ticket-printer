@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Parking Manager</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="desktop.css" />
   <script src="script.js" type="module"></script>
 </head>
 <body>
@@ -32,6 +33,30 @@
           <div class="field">
             <label for="outTime">Out-Time</label>
             <input type="time" id="outTime" required />
+          </div>
+        </div>
+
+        <div class="time-grid">
+          <div class="field">
+            <label for="plateNumber">Plate Number <span class="optional">(optional)</span></label>
+            <input
+              type="text"
+              id="plateNumber"
+              placeholder="e.g. AA 3-B12345"
+              autocomplete="off"
+              maxlength="20"
+            />
+          </div>
+
+          <div class="field">
+            <label for="tinNumber">TIN Number <span class="optional">(optional)</span></label>
+            <input
+              type="text"
+              id="tinNumber"
+              placeholder="e.g. 0012345678"
+              autocomplete="off"
+              maxlength="20"
+            />
           </div>
         </div>
 
@@ -76,6 +101,16 @@
 
         <div class="receipt-divider"></div>
 
+        <div class="receipt-row" id="receiptPlateRow">
+          <span>Plate No.</span>
+          <strong id="receiptPlate"></strong>
+        </div>
+
+        <div class="receipt-row" id="receiptTinRow">
+          <span>TIN No.</span>
+          <strong id="receiptTin"></strong>
+        </div>
+
         <div class="receipt-row">
           <span>In-Time</span>
           <strong id="receiptInTime"></strong>
@@ -116,7 +151,7 @@
 
    
 <footer class="app-footer no-print">
-  Powered By NYT Software Solutions · <a href="admin.html" class="admin-link">Admin</a>
+  Powered By NYT Software Solutions · <a href="admin.html" class="admin-link">Admin</a> · <a href="zreport.html" class="admin-link">Z Report</a>
 </footer>
 
   </main>

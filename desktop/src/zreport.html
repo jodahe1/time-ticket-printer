@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Z Report</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="desktop.css" />
+  <style>
+    .app.admin { max-width: 1100px; }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: 1fr auto auto auto;
+      gap: 12px;
+      align-items: end;
+      margin-bottom: 18px;
+    }
+
+    .toolbar .field { margin-bottom: 0; }
+    .toolbar .btn { width: auto; white-space: nowrap; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .stat {
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #f8faf8;
+    }
+
+    .stat span { color: var(--muted); font-size: 13px; }
+    .stat strong { display: block; font-size: 22px; }
+
+    .table-wrap { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th, td {
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+    td.num, th.num { text-align: right; }
+    tfoot td { font-weight: 700; border-bottom: none; }
+    .empty { padding: 30px; text-align: center; color: var(--muted); }
+
+    .top-actions { display: flex; gap: 8px; margin-left: auto; }
+    .top-actions .btn { width: auto; min-height: 38px; padding: 8px 14px; display: inline-flex; align-items: center; text-decoration: none; font-size: 14px; }
+
+    @media (max-width: 720px) {
+      .toolbar { grid-template-columns: 1fr 1fr; }
+      .toolbar .field { grid-column: 1 / -1; }
+      .stats { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app admin">
+    <header class="app-header">
+      <div class="logo">Z</div>
+      <div>
+        <h1>Z Report</h1>
+        <p>Daily parking summary</p>
+      </div>
+      <div class="top-actions">
+        <a href="index.html" class="btn btn-secondary">New Receipt</a>
+        <a href="admin.html" class="btn btn-secondary">Admin</a>
+      </div>
+    </header>
+
+    <section class="form-card">
+      <div class="toolbar">
+        <div class="field">
+          <label for="day">Day</label>
+          <input type="date" id="day" />
+        </div>
+        <button type="button" id="todayButton" class="btn btn-secondary">Today</button>
+        <button type="button" id="exportButton" class="btn btn-secondary">Export PDF</button>
+        <button type="button" id="printButton" class="btn btn-primary">Print Z Report</button>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><span>Receipts</span><strong id="statCount">0</strong></div>
+        <div class="stat"><span>Prints</span><strong id="statPrints">0</strong></div>
+        <div class="stat"><span>Total fees</span><strong id="statTotal">0.00 ETB</strong></div>
+      </div>
+
+      <p class="message" id="message"></p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Receipt No.</th>
+              <th>Time</th>
+              <th>In-Time</th>
+              <th>Out-Time</th>
+              <th>Plate No.</th>
+              <th>TIN No.</th>
+              <th class="num">Fee</th>
+              <th class="num">Prints</th>
+            </tr>
+          </thead>
+          <tbody id="receiptRows"></tbody>
+          <tfoot>
+            <tr>
+              <td colspan="6" id="footCount"></td>
+              <td class="num" id="footTotal"></td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+        <div class="empty hidden" id="emptyState">No receipts on this day.</div>
+      </div>
+    </section>
+
+    <footer class="app-footer">
+      Powered By NYT Software Solutions
+    </footer>
+  </main>
+
+  <script src="vendor/jspdf.umd.min.js"></script>
+  <script src="vendor/jspdf.plugin.autotable.min.js"></script>
+  <script type="module" src="zreport.js"></script>
+</body>
+</html>
