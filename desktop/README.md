@@ -16,6 +16,9 @@ The website in the repository root is separate and is not affected.
   Thermal printers get the receipt exactly like the screen (ESC/POS) and the
   paper is cut after each receipt. Office printers use normal Windows
   printing. If a USB printer is plugged into another socket, the app finds it.
+  If the printer is unplugged, switched off, offline or out of paper, the app
+  shows an error and removes the job, instead of leaving it in the Windows
+  queue to print later.
 - **Admin data**: every receipt is saved on the PC for the Admin page (search,
   date filter, totals, PDF export, change password).
 

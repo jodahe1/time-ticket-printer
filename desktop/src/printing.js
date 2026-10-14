@@ -92,6 +92,13 @@ function createPaper(widthDots, maxHeight) {
       paper.y += lines.length * lh + after;
     },
 
+    // Shop name on one line like the screen, shrinking the font if needed
+    title(text) {
+      let size = paper.fonts.title[0];
+      while (size > 20 * s && measure(text, [size, true]) > w) size -= 1;
+      paper.centered(text, [size, true], 8 * s);
+    },
+
     divider() {
       const yy = paper.y + 14 * s;
       g.lineWidth = 2 * s;
@@ -162,7 +169,7 @@ export function renderReceipt(r, widthDots) {
   const rowGap = 12 * p.s;
 
   p.logo();
-  p.centered(SHOP_NAME, f.title, 8 * p.s);
+  p.title(SHOP_NAME);
   p.centered("Thank you for parking with us!", f.small);
   p.divider();
   p.row("Receipt No.", r.receiptNo, f.label, f.value, rowGap);
@@ -192,7 +199,7 @@ export function renderZReport(report, widthDots) {
   const rowGap = 12 * p.s;
 
   p.logo();
-  p.centered(SHOP_NAME, f.title, 8 * p.s);
+  p.title(SHOP_NAME);
   p.centered("Z REPORT", f.heading, 4 * p.s);
   p.centered("Daily parking summary", f.small);
   p.divider();

@@ -4,6 +4,8 @@
 //  - other printers (office / laser) get the same image through normal
 //    Windows printing
 //  - a USB printer moved to another socket is found again automatically
+//  - an unplugged / switched-off printer or a job stuck with an error is
+//    reported instead of silently waiting in the Windows queue
 
 use serde::{Deserialize, Serialize};
 
@@ -36,6 +38,8 @@ pub struct PrinterInfo {
   pub driver: String,
   pub connected: bool,
   pub is_default: bool,
+  /// "Use printer offline" is ticked or Windows reports the printer offline
+  pub offline: bool,
 }
 
 /// ESC/POS raster image with feed (and cut) at the end.
@@ -68,11 +72,14 @@ pub fn to_escpos(raster: &Raster, cut: bool) -> Vec<u8> {
 #[cfg(windows)]
 mod win {
   use super::*;
-  use windows::core::{BOOL, HSTRING, PCWSTR, PWSTR};
+  use windows::core::{BOOL, GUID, HSTRING, PCWSTR, PWSTR};
   use windows::Win32::Devices::DeviceAndDriverInstallation::*;
   use windows::Win32::Graphics::Gdi::*;
   use windows::Win32::Graphics::Printing::*;
   use windows::Win32::Storage::Xps::*;
+  use windows::Win32::System::Registry::*;
+
+  const GUID_DEVINTERFACE_USBPRINT: GUID = GUID::from_u128(0x28d78fad_5a12_11d1_ae5b_0000f803a8c2);
 
   fn pwstr_to_string(p: PWSTR) -> String {
     if p.is_null() {
@@ -97,29 +104,39 @@ mod win {
     }
   }
 
-  /// USB ports that currently have a printer plugged in (e.g. "USB003")
+  /// USB ports that currently have a printer plugged in (e.g. "USB003").
+  /// Read the way Windows' USB port monitor does it: every present USB printer
+  /// interface stores its port as "Base Name" + "Port Number". This also finds
+  /// multi-function printers (e.g. HP LaserJet) that have no USBPRINT device.
   pub fn connected_usb_ports() -> Vec<String> {
     let mut ports = Vec::new();
     unsafe {
-      let Ok(set) = SetupDiGetClassDevsW(None, &HSTRING::from("USBPRINT"), None, DIGCF_PRESENT | DIGCF_ALLCLASSES) else {
+      let Ok(set) = SetupDiGetClassDevsW(Some(&GUID_DEVINTERFACE_USBPRINT), PCWSTR::null(), None, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE) else {
         return ports;
       };
       let mut i = 0;
       loop {
-        let mut info = SP_DEVINFO_DATA { cbSize: std::mem::size_of::<SP_DEVINFO_DATA>() as u32, ..Default::default() };
-        if SetupDiEnumDeviceInfo(set, i, &mut info).is_err() {
+        let mut iface = SP_DEVICE_INTERFACE_DATA { cbSize: std::mem::size_of::<SP_DEVICE_INTERFACE_DATA>() as u32, ..Default::default() };
+        if SetupDiEnumDeviceInterfaces(set, None, &GUID_DEVINTERFACE_USBPRINT, i, &mut iface).is_err() {
           break;
         }
         i += 1;
-        let mut buf = [0u16; 512];
-        if SetupDiGetDeviceInstanceIdW(set, &info, Some(&mut buf), None).is_ok() {
-          let id = String::from_utf16_lossy(&buf[..buf.iter().position(|&c| c == 0).unwrap_or(0)]).to_uppercase();
-          if let Some(pos) = id.rfind("USB") {
-            let tail = &id[pos..];
-            if tail.len() > 3 && tail[3..].chars().all(|c| c.is_ascii_digit()) {
-              ports.push(tail.to_string());
-            }
+        let Ok(key) = SetupDiOpenDeviceInterfaceRegKey(set, &iface, None, KEY_READ.0) else { continue };
+        let mut number = 0u32;
+        let mut size = 4u32;
+        let has_number = RegQueryValueExW(key, &HSTRING::from("Port Number"), None, None, Some(&mut number as *mut u32 as *mut u8), Some(&mut size)).is_ok();
+        let mut name = [0u16; 32];
+        let mut size = (name.len() * 2) as u32;
+        let mut base = String::from("USB");
+        if RegQueryValueExW(key, &HSTRING::from("Base Name"), None, None, Some(name.as_mut_ptr() as *mut u8), Some(&mut size)).is_ok() {
+          let read = String::from_utf16_lossy(&name[..name.iter().position(|&c| c == 0).unwrap_or(0)]);
+          if !read.is_empty() {
+            base = read;
           }
+        }
+        let _ = RegCloseKey(key);
+        if has_number {
+          ports.push(format!("{base}{number:03}"));
         }
       }
       let _ = SetupDiDestroyDeviceInfoList(set);
@@ -150,6 +167,7 @@ mod win {
         let port = pwstr_to_string(p.pPortName);
         printers.push(PrinterInfo {
           connected: connected.iter().any(|c| c.eq_ignore_ascii_case(&port)),
+          offline: p.Attributes & PRINTER_ATTRIBUTE_WORK_OFFLINE != 0 || p.Status & PRINTER_STATUS_OFFLINE != 0,
           is_default: name == default,
           driver: pwstr_to_string(p.pDriverName),
           name,
@@ -179,6 +197,68 @@ mod win {
       .unwrap_or_else(|| name.into())
   }
 
+  /// Error if the printer clearly cannot print right now (unplugged or
+  /// switched-off USB printer, or "Use printer offline" ticked).
+  pub fn check_ready(name: &str) -> Result<(), String> {
+    let Some(p) = list_printers().into_iter().find(|p| p.name == name) else {
+      return Err(format!("Printer '{name}' was not found. Choose another printer on the Admin page (Printer settings)."));
+    };
+    if p.port.to_uppercase().starts_with("USB") && !p.connected {
+      return Err(format!(
+        "Printer '{name}' is not connected. Turn it on and check the USB cable, or choose the right printer on the Admin page (Printer settings)."
+      ));
+    }
+    if p.offline {
+      return Err(format!("Printer '{name}' is offline. Turn it on, or untick \"Use printer offline\" in the Windows printer settings."));
+    }
+    Ok(())
+  }
+
+  /// Follows a job for a few seconds: a job that hits an error, goes offline or
+  /// runs out of paper is removed from the queue and reported, so it doesn't
+  /// print unexpectedly later.
+  pub fn watch_job(printer: &str, job_id: u32) -> Result<(), String> {
+    const PROBLEM: u32 = JOB_STATUS_ERROR | JOB_STATUS_OFFLINE | JOB_STATUS_PAPEROUT | JOB_STATUS_USER_INTERVENTION | JOB_STATUS_BLOCKED_DEVQ;
+    unsafe {
+      let mut handle = PRINTER_HANDLE::default();
+      if OpenPrinterW(&HSTRING::from(printer), &mut handle, None).is_err() {
+        return Ok(());
+      }
+      let mut result = Ok(());
+      for _ in 0..40 {
+        let mut needed = 0u32;
+        let _ = GetJobW(handle, job_id, 1, None, &mut needed);
+        if needed == 0 {
+          break; // the job has left the queue: printed
+        }
+        let mut buf = vec![0u64; (needed as usize).div_ceil(8)];
+        let bytes = std::slice::from_raw_parts_mut(buf.as_mut_ptr() as *mut u8, needed as usize);
+        if !GetJobW(handle, job_id, 1, Some(bytes), &mut needed).as_bool() {
+          break;
+        }
+        let status = (*(buf.as_ptr() as *const JOB_INFO_1W)).Status;
+        if status & (JOB_STATUS_PRINTED | JOB_STATUS_COMPLETE) != 0 {
+          break;
+        }
+        if status & PROBLEM != 0 {
+          let reason = if status & JOB_STATUS_PAPEROUT != 0 {
+            "is out of paper"
+          } else if status & JOB_STATUS_OFFLINE != 0 {
+            "is offline or switched off"
+          } else {
+            "reported an error (check that it is on, has paper and the cover is closed)"
+          };
+          let _ = SetJobW(handle, job_id, 0, None, JOB_CONTROL_DELETE);
+          result = Err(format!("Printer '{printer}' {reason}. The receipt was not printed."));
+          break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(250));
+      }
+      let _ = ClosePrinter(handle);
+      result
+    }
+  }
+
   fn printer_dc(name: &str) -> Result<HDC, String> {
     let dc = unsafe { CreateDCW(&HSTRING::from("WINSPOOL"), &HSTRING::from(name), PCWSTR::null(), None) };
     if dc.is_invalid() {
@@ -199,7 +279,8 @@ mod win {
   }
 
   /// Sends bytes straight to the printer queue (no driver rendering).
-  pub fn send_raw(printer: &str, doc_name: &str, data: &[u8]) -> Result<(), String> {
+  /// Returns the Windows job id.
+  pub fn send_raw(printer: &str, doc_name: &str, data: &[u8]) -> Result<u32, String> {
     unsafe {
       let mut handle = PRINTER_HANDLE::default();
       OpenPrinterW(&HSTRING::from(printer), &mut handle, None)
@@ -212,7 +293,8 @@ mod win {
         pDatatype: PWSTR(datatype.as_ptr() as *mut u16),
       };
       let result = (|| {
-        if StartDocPrinterW(handle, 1, &info) == 0 {
+        let job_id = StartDocPrinterW(handle, 1, &info);
+        if job_id == 0 {
           return Err(format!("Printer '{printer}' refused the job: {}", windows::core::Error::from_thread().message()));
         }
         let _ = StartPagePrinter(handle);
@@ -223,7 +305,7 @@ mod win {
         if !ok.as_bool() {
           return Err(format!("Printing failed: {}", windows::core::Error::from_thread().message()));
         }
-        Ok(())
+        Ok(job_id)
       })();
       let _ = ClosePrinter(handle);
       result
@@ -237,7 +319,8 @@ mod win {
   }
 
   /// Normal Windows printing of the receipt image (office / laser printers).
-  pub fn print_image(printer: &str, doc_name: &str, raster: &Raster, max_width_mm: f64) -> Result<(), String> {
+  /// Returns the Windows job id.
+  pub fn print_image(printer: &str, doc_name: &str, raster: &Raster, max_width_mm: f64) -> Result<u32, String> {
     let dc = printer_dc(printer)?;
     let result = unsafe { print_image_on(dc, doc_name, raster, max_width_mm) };
     unsafe {
@@ -246,7 +329,7 @@ mod win {
     result
   }
 
-  unsafe fn print_image_on(dc: HDC, doc_name: &str, raster: &Raster, max_width_mm: f64) -> Result<(), String> {
+  unsafe fn print_image_on(dc: HDC, doc_name: &str, raster: &Raster, max_width_mm: f64) -> Result<u32, String> {
     let dpi_x = GetDeviceCaps(Some(dc), LOGPIXELSX).max(1) as f64;
     let dpi_y = GetDeviceCaps(Some(dc), LOGPIXELSY).max(1) as f64;
     let printable_mm = GetDeviceCaps(Some(dc), HORZRES) as f64 / dpi_x * 25.4;
@@ -289,7 +372,8 @@ mod win {
       lpszDocName: PCWSTR(doc.as_ptr()),
       ..Default::default()
     };
-    if StartDocW(dc, &docinfo) <= 0 {
+    let job_id = StartDocW(dc, &docinfo);
+    if job_id <= 0 {
       return Err(format!("The printer refused the job: {}", windows::core::Error::from_thread().message()));
     }
     StartPage(dc);
@@ -314,12 +398,12 @@ mod win {
     if lines == 0 {
       return Err("Printing failed: the printer did not accept the receipt image".into());
     }
-    Ok(())
+    Ok(job_id as u32)
   }
 }
 
 #[cfg(windows)]
-pub use win::{default_printer, is_receipt_printer, list_printers, print_image, resolve_printer, send_raw};
+pub use win::{check_ready, default_printer, is_receipt_printer, list_printers, print_image, resolve_printer, send_raw, watch_job};
 
 #[cfg(not(windows))]
 mod other {
@@ -337,11 +421,17 @@ mod other {
   pub fn is_receipt_printer(_: &str) -> bool {
     false
   }
-  pub fn send_raw(_: &str, _: &str, _: &[u8]) -> Result<(), String> {
+  pub fn check_ready(_: &str) -> Result<(), String> {
     Err(MSG.into())
   }
-  pub fn print_image(_: &str, _: &str, _: &Raster, _: f64) -> Result<(), String> {
+  pub fn send_raw(_: &str, _: &str, _: &[u8]) -> Result<u32, String> {
     Err(MSG.into())
+  }
+  pub fn print_image(_: &str, _: &str, _: &Raster, _: f64) -> Result<u32, String> {
+    Err(MSG.into())
+  }
+  pub fn watch_job(_: &str, _: u32) -> Result<(), String> {
+    Ok(())
   }
 }
 
@@ -380,11 +470,13 @@ pub fn print(target: &Target, doc_name: &str, raster: &Raster, cut: bool, receip
   if target.printer.is_empty() {
     return Err("No printer is installed on this computer.".into());
   }
-  if target.escpos {
-    send_raw(&target.printer, doc_name, &to_escpos(raster, cut))
+  check_ready(&target.printer)?;
+  let job_id = if target.escpos {
+    send_raw(&target.printer, doc_name, &to_escpos(raster, cut))?
   } else {
-    print_image(&target.printer, doc_name, raster, receipt_width_mm)
-  }
+    print_image(&target.printer, doc_name, raster, receipt_width_mm)?
+  };
+  watch_job(&target.printer, job_id)
 }
 
 #[cfg(test)]
@@ -406,8 +498,34 @@ mod tests {
   #[cfg(windows)]
   fn lists_printers_on_this_pc() {
     for p in list_printers() {
-      println!("{} | port {} | usb connected {} | default {} | receipt {}", p.name, p.port, p.connected, p.is_default, is_receipt_printer(&p.name));
+      println!(
+        "{} | port {} | usb connected {} | offline {} | default {} | receipt {}",
+        p.name,
+        p.port,
+        p.connected,
+        p.offline,
+        p.is_default,
+        is_receipt_printer(&p.name)
+      );
     }
     println!("default: {}", default_printer());
+  }
+
+  /// Prints a test pattern on a real printer:
+  /// `PRINTER="HP LaserJet 400 M401 PCL 6" cargo test real_print -- --ignored --nocapture`
+  #[test]
+  #[ignore]
+  fn real_print() {
+    let name = std::env::var("PRINTER").unwrap_or_default();
+    let t = target(&name, "auto", 80);
+    let bpr = t.dots as usize / 8;
+    let mut data = vec![0u8; bpr * 120];
+    for row in 0..120 {
+      if row < 6 || row >= 114 || row % 20 < 2 {
+        data[row * bpr..(row + 1) * bpr].fill(0xFF);
+      }
+    }
+    let raster = Raster { width: t.dots, height: 120, data };
+    println!("{} (escpos {}): {:?}", t.printer, t.escpos, print(&t, "Parking Receipt TEST-PATTERN", &raster, true, 72.0));
   }
 }
